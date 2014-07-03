@@ -6,7 +6,8 @@ var gulp          = require('gulp'),
     tap           = require('gulp-tap'),
     concat        = require('gulp-concat'),
     size          = require('gulp-size'),
-    path          = require('path');
+    path          = require('path'),
+    Q             = require('q');
 
 var assets = {};  //  we'll keep our assets in memory
 
@@ -53,36 +54,48 @@ gulp.task('load-versions', function(){
   }) );
 });
 
-gulp.task('write-versions', function(taskDone){
+gulp.task('write-versions', function(){
 
   //  we store all the different version file names in an array
-  var availableVersions = Object.keys(assets.versions);
+  var availableVersions = Object.keys(assets.versions),
+      //  we make an array to store all the stream promises
+      streamPromises = [];
 
   availableVersions
   .forEach(function(v){
 
-    //  we load the data from the cocatenated libs
-    var fileContents = assets.libs.libs_concat_js;
-    //  we add the version's data
-    fileContents += '\n' + assets.versions[v];
+    //  make a promise for that version-stream
+    var deferred = Q.defer();
+    //  add it to the promises array
+    streamPromises.push(deferred);
 
-    //  kickstart a stream
-    //var stream = source('final.' + v.replace('_js', '.js'));
+        //  make a new stream with fake file name
+    var stream = source('final.' + v.replace('_js', '.js')),
+        //  we load the data from the cocatenated libs
+        fileContents = assets.libs.libs_concat_js +
+        //  we add the version's data
+        '\n' + assets.versions[v];
+
+    //  write the file contents to the stream
+    stream.write(fileContents);
+
+    process.nextTick(function(){
+      //  in the next process cycle, end the stream
+      stream.end();
+    });
+
+    stream
+    //  transform the raw data into the stream, into a vinyl object/file
+    .pipe( vinylBuffer() )
+  //.pipe( tap(function(file){ /* do something with the file contents here */ }) )
+    .pipe( gulp.dest('./output') )
+    .on('end', function(){
+      //  TODO : solve ending in this task
+      deferred.resolve();
+    });
   });
 
-  taskDone();
-  /*
-  //gulp.src(jsFiles)
-  var stream = source('merge.js');
-
-  process.nextTick(function(){
-    stream.end();
-  });
-
-  return stream
-  .pipe(vinylBuffer())
-  .pipe( size({showFiles: true}) );
-  */
+  return streamPromises;
 
 });
 

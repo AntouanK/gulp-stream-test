@@ -1,5 +1,5 @@
 ;(function(){
 
-	var test1 = 'Hey, what\'s up?';
+	var version1 = 'version1';
 
 })();

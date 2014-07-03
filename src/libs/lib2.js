@@ -1,5 +1,5 @@
 ;(function(){
 
-	var test1 = 'Hey, what\'s up?';
+	var lib2 = 'lib2';
 
 })();
