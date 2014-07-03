@@ -19,3 +19,10 @@ So if we had `lib1.js`, `lib2.js` and `version.1.js`,`version.2.js`,`version.3.j
 >`final.version.2.js` ( which is `lib1.js`+`lib2.js`+`version.2.js` )
 >
 >`final.version.3.js` ( which is `lib1.js`+`lib2.js`+`version.3.js` )
+
+-----
+Run `npm i` to install npm dependencies.
+
+Run `gulp` to build the files in `output` directory.
+
+Run `gulp watch` to build the files and keep the watcher on ( files are going to be rebuild on each change ).
