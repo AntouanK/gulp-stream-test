@@ -67,7 +67,7 @@ gulp.task('write-versions', function(taskDone){
 		fileContents += '\n' + assets.versions[v];
 
 		//	kickstart a stream
-		var stream = source('final.' + v.replace('_js', '.js'));
+		//var stream = source('final.' + v.replace('_js', '.js'));
 	});
 
 	taskDone();
