@@ -108,3 +108,23 @@ gulp.task('default', function(taskDone){
     taskDone
   );
 });
+
+//  only watch after having run 'deafault' once so that all resources
+//  are already in memory
+gulp.task('watch', ['default'], function(){
+
+  gulp.watch('./src/libs/*.js', function(){
+    runSequence(
+      'load-lib-files',  //  we only have to load the changed files
+      'write-versions'
+    );
+  });
+
+  gulp.watch('./src/versions/*.js', function(){
+    runSequence(
+      'load-versions',  //  we only have to load the changed files
+      'write-versions'
+    );
+  });
+
+});
