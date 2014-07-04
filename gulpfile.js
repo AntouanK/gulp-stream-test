@@ -9,55 +9,39 @@ var gulp          = require('gulp'),
     path          = require('path'),
     Q             = require('q');
 
-var assets = {};  //  we'll keep our assets in memory
+var memory = {};  //  we'll keep our assets in memory
 
 //  task of loading the files' contents in memory
 gulp.task('load-lib-files', function(){
 
-  //  we'll store the libs data here
-  assets.libs = {};
-
   //  read the lib files from the disk
   return gulp.src('./src/libs/*.js')
-  //  tap into the stream to get each file's data
+  //  concatenate all lib files into one
   .pipe( concat('libs.concat.js') )
+  //  tap into the stream to get each file's data
   .pipe( tap(function(file){
-
-    //  get the file name
-    var fileName =
-    path.basename(file.path)
-    .replace(/\./g, '_');
-
-    //  save the file contents in the assets
-    assets.libs[fileName] = file.contents.toString();
-
+    //  save the file contents in memory
+    memory[path.basename(file.path)] = file.contents.toString();
   }));
 });
 
 gulp.task('load-versions', function(){
 
-  assets.versions = {};
+  memory.versions = {};
 
   //  read the lib files from the disk
   return gulp.src('./src/versions/version.*.js')
   //  tap into the stream to get each file's data
   .pipe( tap(function(file){
-
-    //  get the file name
-    var fileName =
-    path.basename(file.path)
-    .replace(/\./g, '_');
-
     //  save the file contents in the assets
-    assets.versions[fileName] = file.contents.toString();
-
+    memory.versions[path.basename(file.path)] = file.contents.toString();
   }) );
 });
 
 gulp.task('write-versions', function(){
 
   //  we store all the different version file names in an array
-  var availableVersions = Object.keys(assets.versions),
+  var availableVersions = Object.keys(memory.versions),
       //  we make an array to store all the stream promises
       streamPromises = [];
 
@@ -70,11 +54,11 @@ gulp.task('write-versions', function(){
     streamPromises.push(deferred);
 
         //  make a new stream with fake file name
-    var stream = source('final.' + v.replace('_js', '.js')),
-        //  we load the data from the cocatenated libs
-        fileContents = assets.libs.libs_concat_js +
-        //  we add the version's data
-        '\n' + assets.versions[v];
+    var stream = source('final.' + v ),
+        //  we load the data from the concatenated libs
+        fileContents = memory['libs.concat.js'] +
+          //  we add the version's data
+          '\n' + memory.versions[v];
 
     //  write the file contents to the stream
     stream.write(fileContents);
@@ -90,7 +74,7 @@ gulp.task('write-versions', function(){
   //.pipe( tap(function(file){ /* do something with the file contents here */ }) )
     .pipe( gulp.dest('./output') )
     .on('end', function(){
-      //  TODO : solve ending in this task
+      //console.log('file written');
       deferred.resolve();
     });
   });
@@ -99,17 +83,18 @@ gulp.task('write-versions', function(){
 
 });
 
-
+//============================================ our main task
 gulp.task('default', function(taskDone){
 
   runSequence(
-    ['load-lib-files', 'load-versions'],
-    'write-versions',
-    taskDone
+    ['load-lib-files', 'load-versions'],  //  load the files in parallel
+    'write-versions',  //  ready to write once all resources are in memory
+    taskDone           //  done
   );
 });
 
-//  only watch after having run 'deafault' once so that all resources
+//============================================ our watcher task
+//  only watch after having run 'default' once so that all resources
 //  are already in memory
 gulp.task('watch', ['default'], function(){
 
