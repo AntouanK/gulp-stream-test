@@ -1,6 +1,7 @@
 
 var gulp          = require('gulp'),
     runSequence   = require('run-sequence'),
+    es            = require('event-stream'),
     source        = require('vinyl-source-stream'),
     vinylBuffer   = require('vinyl-buffer'),
     tap           = require('gulp-tap'),
@@ -37,6 +38,48 @@ gulp.task('load-versions', function(){
     memory.versions[path.basename(file.path)] = file.contents.toString();
   }) );
 });
+
+gulp.task('write-versions-stream', function(){
+
+  //  we store all the different version file names in an array
+  var availableVersions = Object.keys(memory.versions),
+      //  we make an array to store all the stream promises
+      streams = [];
+
+  availableVersions
+  .forEach(function(v){
+
+        //  make a new stream with fake file name
+    var stream = source('final.' + v ),
+        //  we load the data from the concatenated libs
+        fileContents = memory['libs.concat.js'] +
+          //  we add the version's data
+          '\n' + memory.versions[v];
+
+    streams.push(stream);
+
+    //  write the file contents to the stream
+    stream.write(fileContents);
+
+    process.nextTick(function(){
+      //  in the next process cycle, end the stream
+      stream.end();
+    });
+
+    stream
+    //  transform the raw data into the stream, into a vinyl object/file
+    .pipe( vinylBuffer() )
+  //.pipe( tap(function(file){ /* do something with the file contents here */ }) )
+    .pipe( gulp.dest('./output') )
+    .on('end', function(){
+      //console.log('file written');
+    });
+  });
+
+  return es.merge.apply(this, streams);
+
+});
+
 
 gulp.task('write-versions', function(){
 
@@ -84,7 +127,16 @@ gulp.task('write-versions', function(){
 });
 
 //============================================ our main task
-gulp.task('default', function(taskDone){
+gulp.task('stream', function(taskDone){
+
+  runSequence(
+    ['load-lib-files', 'load-versions'],  //  load the files in parallel
+    'write-versions-stream',  //  ready to write once all resources are in memory
+    taskDone           //  done
+  );
+});
+
+gulp.task('promises', function(taskDone){
 
   runSequence(
     ['load-lib-files', 'load-versions'],  //  load the files in parallel
@@ -101,14 +153,14 @@ gulp.task('watch', ['default'], function(){
   gulp.watch('./src/libs/*.js', function(){
     runSequence(
       'load-lib-files',  //  we only have to load the changed files
-      'write-versions'
+      'write-versions-stream'
     );
   });
 
   gulp.watch('./src/versions/*.js', function(){
     runSequence(
       'load-versions',  //  we only have to load the changed files
-      'write-versions'
+      'write-versions-stream'
     );
   });
 
